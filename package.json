@@ -1,0 +1,15 @@
+{
+  "name": "reference-management",
+  "version": "1.0.0",
+  "description": "The system allows users to submit a URL, retrieve metadata and content from a Webpage, and stores them in a database.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon backend/server.js"
+  },
+  "type": "module",
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
