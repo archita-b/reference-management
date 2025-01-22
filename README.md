@@ -6,7 +6,7 @@ The system allows users to submit a URL, retrieve metadata and content from a We
 
 ### 1. Submit a URL
 
-**Endpoint**: `POST /references`
+**Endpoint**: `POST /articles`
 **Description**: Accepts URL from a user, processes it to retrieve metadata and content, and stores in database.
 
 #### Parameters:
@@ -19,7 +19,7 @@ The system allows users to submit a URL, retrieve metadata and content from a We
 
 ```json
 {
-  "ref_id": "",
+  "id": "",
   "metadata": ""
 }
 ```
@@ -36,15 +36,17 @@ The system allows users to submit a URL, retrieve metadata and content from a We
 
 **status**: `400 Bad Request`
 
-### 2. Get all references
+---
 
-**Endpoint**: `GET /references/?offset=10&limit=10`
-**Description**: Fetches all the references collected by a user.
+### 2. Get all articles
+
+**Endpoint**: `GET /articles/?offset=10&limit=10`
+**Description**: Fetches all the articles collected by a user.
 
 #### Query parameters:
 
-- `offset`(integer, optional): The starting point of the list of references. Default is 0.
-- `limit`(integer, optional): The maximum number of references to return. Default is 25.
+- `offset`(integer, optional): The starting point of the list of articles. Default is 0.
+- `limit`(integer, optional): The maximum number of articles to return. Default is 25.
 
 #### Response:
 
@@ -53,19 +55,19 @@ The system allows users to submit a URL, retrieve metadata and content from a We
 ```json
 [
   {
-    "ref_id": "",
+    "id": "",
     "metadata": ""
   },
   {
-    "ref_id": "",
+    "id": "",
     "metadata": ""
   },
   {
-    "ref_id": "",
+    "id": "",
     "metadata": ""
   },
   {
-    "ref_id": "",
+    "id": "",
     "metadata": ""
   }
 ]
@@ -73,10 +75,12 @@ The system allows users to submit a URL, retrieve metadata and content from a We
 
 **status**: `200 OK`
 
-### Get a reference
+---
 
-**Endpoint**: `GET /references/${ref_id}`
-**Description**: Fetches a particular reference matching the id sent by user.
+### 3. Get a particular article
+
+**Endpoint**: `GET /articles/${ref_id}`
+**Description**: Fetches a particular article matching the id sent by user.
 
 #### Response:
 
@@ -84,7 +88,7 @@ The system allows users to submit a URL, retrieve metadata and content from a We
 
 ```json
 {
-  "ref_id": "",
+  "id": "",
   "metadata": "",
   "content": ""
 }
@@ -96,7 +100,7 @@ The system allows users to submit a URL, retrieve metadata and content from a We
 
 ```json
 {
-  "error": "Missing reference id."
+  "error": "Missing article id."
 }
 ```
 
@@ -104,7 +108,7 @@ The system allows users to submit a URL, retrieve metadata and content from a We
 
 ```json
 {
-  "error": "Invalid reference id."
+  "error": "Invalid article id."
 }
 ```
 
