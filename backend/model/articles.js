@@ -1,18 +1,25 @@
 import pool from "./database.js";
 
 export async function getArticlesDB(author, title) {
-  const noFilter = !author && !title;
+  let query = `SELECT * FROM articles`;
+  const values = [];
+  const conditions = [];
 
-  const query = noFilter
-    ? `SELECT * FROM articles`
-    : `SELECT * FROM articles WHERE 
-    (author ILIKE '%' || $1 || '%')
-    AND (title ILIKE '%' || $2 || '%')`;
+  if (author) {
+    conditions.push(`author ILIKE '%' || $${conditions.length + 1} || '%'`);
+    values.push(author);
+  }
 
-  const result = noFilter
-    ? await pool.query(query)
-    : await pool.query(query, [author, title]);
+  if (title) {
+    conditions.push(`title ILIKE '%' || $${conditions.length + 1} || '%'`);
+    values.push(title);
+  }
 
+  if (conditions.length > 0) {
+    query += ` WHERE ` + conditions.join(" AND ");
+  }
+
+  const result = await pool.query(query, values);
   return result.rows;
 }
 
