@@ -2,9 +2,12 @@ import { createArticleDB, getArticlesDB } from "../model/articles.js";
 
 export async function getArticles(req, res, next) {
   try {
-    const { author, title } = req.query;
+    const { author, title, startDate, endDate } = req.query;
 
-    const articles = await getArticlesDB(author, title);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    const articles = await getArticlesDB(author, title, start, end);
 
     res.status(200).json(articles);
   } catch (error) {
@@ -27,31 +30,33 @@ export async function createArticle(req, res, next) {
       `${webScraperURL}/metadata?url=${encodeURIComponent(url)}`
     );
 
-    if (!metadataResponse.ok) {
-      return res.json({
-        error: "Failed to fetch metadata for web page.",
-      }); // status?
-    }
+    // if (!metadataResponse.ok) {
+    //   return res.json({
+    //     error: "Failed to fetch metadata for web page.",
+    //   }); // status?
+    // }
 
     const contentResponse = await fetch(
       `${webScraperURL}/content?url=${encodeURIComponent(url)}`
     );
 
-    if (!contentResponse.ok) {
-      return res.json({ error: "Failed to fetch content from web page." }); //status?
-    }
+    // if (!contentResponse.ok) {
+    //   return res.json({ error: "Failed to fetch content from web page." }); //status?
+    // }
 
     const { metadata } = await metadataResponse.json();
     const { content } = await contentResponse.json();
-    // console.log(content);
 
     const author = metadata.author || null;
+    const images = content.images || null;
 
     const newArticle = await createArticleDB(
       url,
       metadata.title,
       author,
-      content
+      content,
+      content.images,
+      metadata.dateOfPublication
     );
 
     res.status(201).json(newArticle);

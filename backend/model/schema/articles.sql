@@ -5,5 +5,7 @@ CREATE TABLE articles (
     author TEXT,
     content TEXT NOT NULL,
     images TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
+    date_of_publication TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP
 );

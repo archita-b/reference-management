@@ -11,11 +11,13 @@ The system allows users to submit a URL, retrieve metadata and content from a We
 
 #### Parameters:
 
-- `url`: ""
+- `url`: "https://en.wikipedia.org/wiki/Octopus"
 
 #### Response:
 
 **success**:
+
+**status**: `201 Created`
 
 ```json
 {
@@ -24,30 +26,32 @@ The system allows users to submit a URL, retrieve metadata and content from a We
 }
 ```
 
-**status**: `201 Created`
-
 **error**:
+
+**status**: `400 Bad Request`
 
 ```json
 {
-  "error": "Invalid URL"
+  "error": "URL is required."
 }
 ```
-
-**status**: `400 Bad Request`
 
 ---
 
 ### 2. Get articles
 
-**Endpoint**: `GET /articles/?author=author 1&title=article 1&offset=10&limit=10`
-**Description**: Fetches all the articles collected by a user.
+**Endpoint**: `GET /articles/?author=author 1&title=article 1&offset=10&limit=10&startDate=2020-12-19T07:44:26Z&endDate=2024-10-01T07:44:26Z`
+**Description**: Fetches all the articles collected by a user matching the query parameters.
 
 #### Query parameters:
 
-- `author`(string, optional): Author name of the article.
+- `author`(string, optional): Name of the author of the article.
 
 - `title`(string, optional): Title of the article.
+
+- `startDate`(string, optional): Filter to retrieve articles published on or after this date. Format is '2020-12-19T07:44:26Z'.
+
+- `endDate`(string, optional): Filter to retrieve articles published on or before this date. Format is '2024-10-01T05:37:58Z'.
 
 - `offset`(integer, optional): The starting point of the list of articles. Default is 0.
 - `limit`(integer, optional): The maximum number of articles to return. Default is 25.
@@ -55,6 +59,8 @@ The system allows users to submit a URL, retrieve metadata and content from a We
 #### Response:
 
 **success**:
+
+**status**: `200 OK`
 
 ```json
 [
@@ -67,5 +73,3 @@ The system allows users to submit a URL, retrieve metadata and content from a We
   }
 ]
 ```
-
-**status**: `200 OK`
