@@ -26,40 +26,33 @@ export async function createArticle(req, res, next) {
 
     const webScraperURL = "https://late3-0-scraper.onrender.com";
 
-    const metadataResponse = await fetch(
-      `${webScraperURL}/metadata?url=${encodeURIComponent(url)}`
-    );
+    Promise.allSettled([
+      fetch(`${webScraperURL}/metadata?url=${encodeURIComponent(url)}`),
+      fetch(`${webScraperURL}/content?url=${encodeURIComponent(url)}`),
+    ]).then(async (results) => {
+      let metadataResponse, contentResponse;
 
-    // if (!metadataResponse.ok) {
-    //   return res.json({
-    //     error: "Failed to fetch metadata for web page.",
-    //   }); // status?
-    // }
+      if (results[0].status === "fulfilled") {
+        metadataResponse = results[0].value.json();
+      }
 
-    const contentResponse = await fetch(
-      `${webScraperURL}/content?url=${encodeURIComponent(url)}`
-    );
+      if (results[1].status === "fulfilled") {
+        contentResponse = results[1].value.json();
+      }
+      const { metadata } = await metadataResponse;
+      const { content } = await contentResponse;
 
-    // if (!contentResponse.ok) {
-    //   return res.json({ error: "Failed to fetch content from web page." }); //status?
-    // }
+      const newArticle = await createArticleDB(
+        url,
+        metadata.title,
+        metadata.author || null,
+        content,
+        content.images || null,
+        metadata.dateOfPublication
+      );
 
-    const { metadata } = await metadataResponse.json();
-    const { content } = await contentResponse.json();
-
-    const author = metadata.author || null;
-    const images = content.images || null;
-
-    const newArticle = await createArticleDB(
-      url,
-      metadata.title,
-      author,
-      content,
-      content.images,
-      metadata.dateOfPublication
-    );
-
-    res.status(201).json(newArticle);
+      res.status(201).json(newArticle);
+    });
   } catch (error) {
     console.log("Error in createArticle controller: ", error.message);
 
