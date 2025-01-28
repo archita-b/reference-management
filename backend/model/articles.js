@@ -1,6 +1,13 @@
 import pool from "./database.js";
 
-export async function getArticlesDB(author, title, startDate, endDate) {
+export async function getArticlesDB(
+  author,
+  title,
+  startDate,
+  endDate,
+  offset,
+  limit
+) {
   let query = `SELECT * FROM articles`;
   const values = [];
   const conditions = [];
@@ -28,6 +35,9 @@ export async function getArticlesDB(author, title, startDate, endDate) {
   if (conditions.length > 0) {
     query += ` WHERE ` + conditions.join(" AND ");
   }
+
+  query += ` LIMIT $${values.length + 1} OFFSET $${values.length + 2}`;
+  values.push(limit, offset);
 
   const result = await pool.query(query, values);
   return result.rows;

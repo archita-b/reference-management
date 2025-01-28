@@ -2,12 +2,16 @@ import { createArticleDB, getArticlesDB } from "../model/articles.js";
 
 export async function getArticles(req, res, next) {
   try {
-    const { author, title, startDate, endDate } = req.query;
+    const { author, title, startDate, endDate, offset, limit } = req.query;
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-
-    const articles = await getArticlesDB(author, title, start, end);
+    const articles = await getArticlesDB(
+      author,
+      title,
+      startDate,
+      endDate,
+      offset,
+      limit
+    );
 
     res.status(200).json(articles);
   } catch (error) {
@@ -48,7 +52,7 @@ export async function createArticle(req, res, next) {
         metadata.author || null,
         content,
         content.images || null,
-        metadata.dateOfPublication
+        metadata.dateOfPublication || null
       );
 
       res.status(201).json(newArticle);
