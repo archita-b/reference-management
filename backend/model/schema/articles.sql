@@ -3,7 +3,7 @@ CREATE TABLE articles (
     url TEXT NOT NULL UNIQUE,
     title TEXT,
     author TEXT,
-    content TEXT NOT NULL,
+    content JSONB NOT NULL,
     images TEXT,
     date_of_publication TIMESTAMP,
     created_at TIMESTAMP DEFAULT NOW(),

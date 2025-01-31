@@ -73,3 +73,36 @@ The system allows users to submit a URL, retrieve metadata and content from a We
   }
 ]
 ```
+
+---
+
+### 3. Get resource from an article
+
+**Endpoint**: `GET /articles/${id}`
+**Description**: Retrieves resource from a particular article matching article ID and path provided in the request.
+
+#### Query parameters:
+
+- `path`: [0, "Octopus", "physiology", "tentacles"]
+
+#### Response:
+
+**success**:
+
+**status**: `200 OK`
+
+```json
+{
+  "resource": "some data"
+}
+```
+
+**error**:
+
+**status**: `404 Not Found`
+
+```json
+{
+  "error": "Resource not found."
+}
+```
