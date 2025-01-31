@@ -1,4 +1,8 @@
-import { createArticleDB, getArticlesDB } from "../model/articles.js";
+import {
+  createArticleDB,
+  getArticleDB,
+  getArticlesDB,
+} from "../model/articles.js";
 
 export async function getArticles(req, res, next) {
   try {
@@ -16,6 +20,24 @@ export async function getArticles(req, res, next) {
     res.status(200).json(articles);
   } catch (error) {
     console.log("Error in getArticle controller: ", error.message);
+    next(error);
+  }
+}
+
+export async function getArticle(req, res, next) {
+  try {
+    const { id: articleId } = req.params;
+    const { path } = req.query;
+
+    const response = await getArticleDB(articleId, path);
+
+    if (!response) {
+      return res.status(404).json({ error: "Resource not found." });
+    }
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.log("Error in getArticleByIdAndPath controller: ", error.message);
     next(error);
   }
 }

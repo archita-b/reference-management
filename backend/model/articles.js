@@ -5,8 +5,8 @@ export async function getArticlesDB(
   title,
   startDate,
   endDate,
-  offset,
-  limit
+  offset = 0,
+  limit = 25
 ) {
   let query = `SELECT * FROM articles`;
   const values = [];
@@ -41,6 +41,23 @@ export async function getArticlesDB(
 
   const result = await pool.query(query, values);
   return result.rows;
+}
+
+export async function getArticleDB(articleId, path) {
+  let query, result;
+
+  if (!path) {
+    query = `SELECT * FROM articles WHERE id  = $1`;
+    result = await pool.query(query, [articleId]);
+  } else {
+    query = `SELECT content #> $2 AS resource 
+                   FROM articles WHERE id = $1 
+                   AND content #> $2 IS NOT NULL`;
+
+    result = await pool.query(query, [articleId, path]);
+  }
+
+  return result.rows[0];
 }
 
 export async function createArticleDB(
