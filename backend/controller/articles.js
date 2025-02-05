@@ -42,6 +42,35 @@ export async function getArticle(req, res, next) {
   }
 }
 
+export async function fetchUrlsFromSitemap(req, res, next) {
+  try {
+    const { url } = req.query;
+
+    const urlParser = "https://late3-0-scraper.onrender.com/sitemap/medium";
+
+    const xmlResponse = await fetch(`${urlParser}?url=${url}`);
+
+    const xmls = await xmlResponse.json();
+
+    const limitedXmls = xmls.slice(0, 20);
+
+    let urls = [];
+
+    for (let i = 0; i < limitedXmls.length; i++) {
+      if (limitedXmls[i].endsWith(".xml")) {
+        const urlResponse = await fetch(`${urlParser}?url=${limitedXmls[i]}`);
+        const url = await urlResponse.json();
+        urls.push(...url);
+      }
+    }
+
+    res.status(200).json(urls);
+  } catch (error) {
+    console.log("Error in fetchUrlsFromSitemap controller: ", error.message);
+    next(error);
+  }
+}
+
 export async function createArticle(req, res, next) {
   try {
     const { url } = req.body;
