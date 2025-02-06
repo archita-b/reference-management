@@ -46,6 +46,10 @@ export async function fetchUrlsFromSitemap(req, res, next) {
   try {
     const { url } = req.query;
 
+    if (!url) {
+      return res.status(400).json({ error: "URL is required" });
+    }
+
     const urlParser = "https://late3-0-scraper.onrender.com/sitemap/medium";
 
     const xmlResponse = await fetch(`${urlParser}?url=${url}`);
@@ -54,34 +58,34 @@ export async function fetchUrlsFromSitemap(req, res, next) {
 
     const limitedXmls = xmls.slice(0, 20);
 
-    let urls = [];
+    let newArticleCount = 0;
 
-    for (let i = 0; i < limitedXmls.length; i++) {
-      if (limitedXmls[i].endsWith(".xml")) {
-        const urlResponse = await fetch(`${urlParser}?url=${limitedXmls[i]}`);
-        const url = await urlResponse.json();
-        urls.push(...url);
+    for (const element of limitedXmls) {
+      if (element.endsWith(".xml")) {
+        const urlResponse = await fetch(`${urlParser}?url=${element}`);
+        const urls = await urlResponse.json();
+
+        for (const singleUrl of urls) {
+          const newArticle = await getMetadataAndContentForUrl(singleUrl);
+          if (newArticle) newArticleCount++;
+        }
       }
     }
 
-    res.status(200).json(urls);
+    res
+      .status(200)
+      .json({ message: `${newArticleCount} new articles created.` });
   } catch (error) {
     console.log("Error in fetchUrlsFromSitemap controller: ", error.message);
     next(error);
   }
 }
 
-export async function createArticle(req, res, next) {
+async function getMetadataAndContentForUrl(url) {
   try {
-    const { url } = req.body;
-
-    if (!url) {
-      return res.status(400).json({ error: "URL is required." });
-    }
-
     const webScraperURL = "https://late3-0-scraper.onrender.com";
 
-    Promise.allSettled([
+    const newArticle = await Promise.allSettled([
       fetch(`${webScraperURL}/metadata?url=${encodeURIComponent(url)}`),
       fetch(`${webScraperURL}/content?url=${encodeURIComponent(url)}`),
     ]).then(async (results) => {
@@ -97,7 +101,7 @@ export async function createArticle(req, res, next) {
       const { metadata } = await metadataResponse;
       const { content } = await contentResponse;
 
-      const newArticle = await createArticleDB(
+      newArticle = await createArticleDB(
         url,
         metadata.title,
         metadata.author || null,
@@ -106,8 +110,28 @@ export async function createArticle(req, res, next) {
         metadata.dateOfPublication || null
       );
 
-      res.status(201).json(newArticle);
+      return newArticle;
     });
+    return newArticle;
+  } catch (error) {
+    console.log(
+      "Error in getMetadataAndContentForUrl function: ",
+      error.message
+    );
+  }
+}
+
+export async function createArticle(req, res, next) {
+  try {
+    const { url } = req.body;
+
+    if (!url) {
+      return res.status(400).json({ error: "URL is required." });
+    }
+
+    const newArticle = await getMetadataAndContentForUrl(url);
+
+    res.status(201).json(newArticle);
   } catch (error) {
     console.log("Error in createArticle controller: ", error.message);
 
