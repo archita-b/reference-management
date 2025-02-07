@@ -50,24 +50,41 @@ export async function fetchUrlsFromSitemap(req, res, next) {
       return res.status(400).json({ error: "URL is required" });
     }
 
-    const urlParser = "https://late3-0-scraper.onrender.com/sitemap/medium";
+    const urlParser = "https://late3-0-scraper.onrender.com/sitemap";
+    const xmlResponse = await fetch(
+      `${urlParser}?url=${encodeURIComponent(url)}`
+    );
 
-    const xmlResponse = await fetch(`${urlParser}?url=${url}`);
+    if (!xmlResponse.ok) {
+      return res.json({ error: "Could not fetch xml data." });
+    }
 
     const xmls = await xmlResponse.json();
-
     const limitedXmls = xmls.slice(0, 20);
-
     let newArticleCount = 0;
 
     for (const element of limitedXmls) {
       if (element.endsWith(".xml")) {
-        const urlResponse = await fetch(`${urlParser}?url=${element}`);
+        const urlResponse = await fetch(
+          `${urlParser}?url=${encodeURIComponent(element)}`
+        );
+
+        if (!urlResponse.ok) {
+          console.log(`Skipping ${element} (could not fetch sitemap)`);
+          continue;
+        }
+
         const urls = await urlResponse.json();
 
-        for (const singleUrl of urls) {
+        const limitedUrls = urls.slice(0, 20);
+
+        for (const singleUrl of limitedUrls) {
           const newArticle = await getMetadataAndContentForUrl(singleUrl);
-          if (newArticle) newArticleCount++;
+          if (newArticle) {
+            newArticleCount++;
+          } else {
+            console.log(`Skipping ${singleUrl} (no valid metadata or content)`);
+          }
         }
       }
     }
@@ -76,7 +93,7 @@ export async function fetchUrlsFromSitemap(req, res, next) {
       .status(200)
       .json({ message: `${newArticleCount} new articles created.` });
   } catch (error) {
-    console.log("Error in fetchUrlsFromSitemap controller: ", error.message);
+    console.log("Error in fetchUrlsFromSitemap controller:", error.message);
     next(error);
   }
 }
@@ -85,39 +102,49 @@ async function getMetadataAndContentForUrl(url) {
   try {
     const webScraperURL = "https://late3-0-scraper.onrender.com";
 
-    const newArticle = await Promise.allSettled([
+    const responses = await Promise.allSettled([
       fetch(`${webScraperURL}/metadata?url=${encodeURIComponent(url)}`),
       fetch(`${webScraperURL}/content?url=${encodeURIComponent(url)}`),
-    ]).then(async (results) => {
-      let metadataResponse, contentResponse;
+    ]);
 
-      if (results[0].status === "fulfilled") {
-        metadataResponse = results[0].value.json();
-      }
+    const metadataResponse =
+      responses[0].status === "fulfilled" && responses[0].value.ok
+        ? await responses[0].value.json()
+        : null;
 
-      if (results[1].status === "fulfilled") {
-        contentResponse = results[1].value.json();
-      }
-      const { metadata } = await metadataResponse;
-      const { content } = await contentResponse;
+    const contentResponse =
+      responses[1].status === "fulfilled" && responses[1].value.ok
+        ? await responses[1].value.json()
+        : null;
 
-      newArticle = await createArticleDB(
-        url,
-        metadata.title,
-        metadata.author || null,
-        content,
-        content.images || null,
-        metadata.dateOfPublication || null
-      );
+    if (!metadataResponse || !contentResponse) {
+      console.log(`Skipping ${url} (metadata or content request failed)`);
+      return null;
+    }
 
-      return newArticle;
-    });
-    return newArticle;
+    console.log("metadata=", metadataResponse);
+    console.log("content=", contentResponse);
+
+    const metadata = metadataResponse.content || {};
+    const title = metadata.title || null;
+    const author = metadata.author || null;
+
+    const content = contentResponse;
+
+    return await createArticleDB(
+      url,
+      title,
+      author,
+      content,
+      metadata.images || null,
+      metadata["article:published_time"] || null
+    );
   } catch (error) {
     console.log(
-      "Error in getMetadataAndContentForUrl function: ",
+      "Error in getMetadataAndContentForUrl function:",
       error.message
     );
+    return null;
   }
 }
 
