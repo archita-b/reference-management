@@ -60,7 +60,7 @@ export async function fetchUrlsFromSitemap(req, res, next) {
     }
 
     const xmls = await xmlResponse.json();
-    const limitedXmls = xmls.slice(0, 20);
+    const limitedXmls = xmls.slice(0, 500);
     let newArticleCount = 0;
 
     for (const element of limitedXmls) {
@@ -76,15 +76,27 @@ export async function fetchUrlsFromSitemap(req, res, next) {
 
         const urls = await urlResponse.json();
 
-        const limitedUrls = urls.slice(0, 20);
+        const batchSize = 10;
+        const numOfBatches = Math.ceil(urls.length / batchSize);
 
-        for (const singleUrl of limitedUrls) {
-          const newArticle = await getMetadataAndContentForUrl(singleUrl);
-          if (newArticle) {
-            newArticleCount++;
-          } else {
-            console.log(`Skipping ${singleUrl} (no valid metadata or content)`);
-          }
+        for (let i = 0; i < numOfBatches; i++) {
+          const start = i * batchSize;
+          const end = Math.min(start + batchSize, urls.length);
+
+          const batch = urls.slice(start, end);
+          const getMetadataAndContentForBatch = batch.map((singleUrl) =>
+            createRecordForUrl(singleUrl)
+          );
+
+          const newArticles = await Promise.allSettled([
+            getMetadataAndContentForBatch,
+          ])
+            .then((newArticles) => newArticles)
+            .catch((error) => console.log(error.message));
+
+          newArticleCount += newArticles.filter(
+            (article) => article !== null
+          ).length;
         }
       }
     }
@@ -93,7 +105,7 @@ export async function fetchUrlsFromSitemap(req, res, next) {
       .status(200)
       .json({ message: `${newArticleCount} new articles created.` });
   } catch (error) {
-    console.log("Error in fetchUrlsFromSitemap controller:", error.message);
+    console.log("Error in fetchUrlsFromSitemap controller: ", error.message);
     next(error);
   }
 }
@@ -122,14 +134,29 @@ async function getMetadataAndContentForUrl(url) {
       return null;
     }
 
-    console.log("metadata=", metadataResponse);
-    console.log("content=", contentResponse);
+    return {
+      metadata: metadataResponse?.content || null,
+      content: contentResponse,
+    };
+  } catch (error) {
+    console.log(
+      "Error in getMetadataAndContentForUrl function: ",
+      error.message
+    );
+  }
+}
 
-    const metadata = metadataResponse.content || {};
+async function createRecordForUrl(url) {
+  try {
+    const { metadata, content } = await getMetadataAndContentForUrl(url);
+
+    if (!metadata || !content) {
+      console.log(`Skipping ${url} (metadata or content request failed)`);
+      return null;
+    }
+
     const title = metadata.title || null;
     const author = metadata.author || null;
-
-    const content = contentResponse;
 
     return await createArticleDB(
       url,
@@ -140,11 +167,8 @@ async function getMetadataAndContentForUrl(url) {
       metadata["article:published_time"] || null
     );
   } catch (error) {
-    console.log(
-      "Error in getMetadataAndContentForUrl function:",
-      error.message
-    );
-    return null;
+    console.log("Error in createRecordForUrl function: ", error.message);
+    next(error);
   }
 }
 
@@ -156,7 +180,7 @@ export async function createArticle(req, res, next) {
       return res.status(400).json({ error: "URL is required." });
     }
 
-    const newArticle = await getMetadataAndContentForUrl(url);
+    const newArticle = await createRecordForUrl(url);
 
     res.status(201).json(newArticle);
   } catch (error) {
