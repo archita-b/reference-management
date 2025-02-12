@@ -60,7 +60,7 @@ export async function fetchUrlsFromSitemap(req, res, next) {
     }
 
     const xmls = await xmlResponse.json();
-    const limitedXmls = xmls.slice(0, 500);
+    const limitedXmls = xmls.slice(1, 2);
     let newArticleCount = 0;
 
     for (const element of limitedXmls) {
@@ -75,39 +75,49 @@ export async function fetchUrlsFromSitemap(req, res, next) {
         }
 
         const urls = await urlResponse.json();
+        // const limitedUrls = urls.slice(0, 10);
 
-        const batchSize = 10;
-        const numOfBatches = Math.ceil(urls.length / batchSize);
-
-        for (let i = 0; i < numOfBatches; i++) {
-          const start = i * batchSize;
-          const end = Math.min(start + batchSize, urls.length);
-
-          const batch = urls.slice(start, end);
-          const getMetadataAndContentForBatch = batch.map((singleUrl) =>
-            createRecordForUrl(singleUrl)
-          );
-
-          const newArticles = await Promise.allSettled([
-            getMetadataAndContentForBatch,
-          ])
-            .then((newArticles) => newArticles)
-            .catch((error) => console.log(error.message));
-
-          newArticleCount += newArticles.filter(
-            (article) => article !== null
-          ).length;
-        }
+        const count = await processUrls(urls, 10);
+        newArticleCount += count;
       }
     }
 
-    res
-      .status(200)
-      .json({ message: `${newArticleCount} new articles created.` });
+    res.status(200).json({ message: "new article(s) created." });
   } catch (error) {
     console.log("Error in fetchUrlsFromSitemap controller: ", error.message);
     next(error);
   }
+}
+
+async function processUrls(urls, batchSize) {
+  let newArticleCount = 0;
+  let activeRequests = 0;
+
+  const processNextUrl = async () => {
+    if (urls.length === 0) return;
+
+    activeRequests++;
+    const url = urls.shift();
+
+    createRecordForUrl(url)
+      .then((newArticle) => {
+        if (!newArticle) {
+          console.log(`Skipping ${url} (no valid metadata or content)`);
+        } else {
+          newArticleCount++;
+        }
+      })
+      .catch((error) => console.log(`Error processing ${url}:`, error))
+      .finally(() => {
+        activeRequests--;
+        processNextUrl();
+      });
+  };
+
+  while (activeRequests < batchSize && urls.length > 0) {
+    processNextUrl();
+  }
+  return newArticleCount;
 }
 
 async function getMetadataAndContentForUrl(url) {
@@ -135,7 +145,7 @@ async function getMetadataAndContentForUrl(url) {
     }
 
     return {
-      metadata: metadataResponse?.content || null,
+      metadata: metadataResponse.metadata.content || null,
       content: contentResponse,
     };
   } catch (error) {
@@ -168,7 +178,6 @@ async function createRecordForUrl(url) {
     );
   } catch (error) {
     console.log("Error in createRecordForUrl function: ", error.message);
-    next(error);
   }
 }
 
