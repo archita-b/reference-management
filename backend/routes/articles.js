@@ -5,6 +5,7 @@ import {
   fetchUrlsFromSitemap,
   getArticle,
   getArticles,
+  getProcessStatus,
 } from "../controller/articles.js";
 
 const router = express.Router();
@@ -14,5 +15,6 @@ router.get("/articles/:id", getArticle);
 router.post("/articles", createArticle);
 
 router.get("/urls", fetchUrlsFromSitemap);
+router.get("/processess/:id", getProcessStatus);
 
 export default router;

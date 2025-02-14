@@ -83,3 +83,35 @@ export async function createArticleDB(
 
   return result.rows[0];
 }
+
+export async function saveProcess(processId, status) {
+  const result = await pool.query(
+    `INSERT INTO processes (id, status, total_urls, processed, skipped)
+                   VALUES ($1, $2, $3, $4, $5)`,
+    [processId, status.status, status.total, status.processed, status.skipped]
+  );
+  return result.rows[0];
+}
+
+export async function updateProcess(processId, updates) {
+  const result = await pool.query(
+    `UPDATE processes SET 
+    status = $1, total_urls = $2, processed = $3, skipped = $4 
+    WHERE id = $5`,
+    [
+      updates.status,
+      updates.total,
+      updates.processed,
+      updates.skipped,
+      processId,
+    ]
+  );
+  return result.rows[0];
+}
+
+export async function getProcessById(processId) {
+  const result = await pool.query(`SELECT * FROM processes WHERE id = $1`, [
+    processId,
+  ]);
+  return result.rows;
+}

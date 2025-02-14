@@ -1,7 +1,12 @@
+import { v4 as uuidv4 } from "uuid";
+
 import {
   createArticleDB,
   getArticleDB,
   getArticlesDB,
+  getProcessById,
+  saveProcess,
+  updateProcess,
 } from "../model/articles.js";
 
 export async function getArticles(req, res, next) {
@@ -50,18 +55,33 @@ export async function fetchUrlsFromSitemap(req, res, next) {
       return res.status(400).json({ error: "URL is required" });
     }
 
+    const processId = uuidv4();
+    await saveProcess(processId, {
+      status: "in_progress",
+      total: 0,
+      processed: 0,
+      skipped: 0,
+    });
+
+    res.status(200).json({ processId });
+
     const urlParser = "https://late3-0-scraper.onrender.com/sitemap";
     const xmlResponse = await fetch(
       `${urlParser}?url=${encodeURIComponent(url)}`
     );
 
     if (!xmlResponse.ok) {
+      await updateProcess(processId, { status: "failed" });
       return res.json({ error: "Could not fetch xml data." });
     }
 
     const xmls = await xmlResponse.json();
-    const limitedXmls = xmls.slice(1, 2);
-    let newArticleCount = 0;
+    const limitedXmls = xmls.slice(3, 4);
+    // console.log("limitedXmls=", limitedXmls);
+
+    let totalUrls = 0;
+    let processedUrls = 0;
+    let skippedUrls = 0;
 
     for (const element of limitedXmls) {
       if (element.endsWith(".xml")) {
@@ -75,22 +95,39 @@ export async function fetchUrlsFromSitemap(req, res, next) {
         }
 
         const urls = await urlResponse.json();
+        totalUrls += urls.length;
+        // console.log("totalUrls=", totalUrls);
         // const limitedUrls = urls.slice(0, 10);
 
-        const count = await processUrls(urls, 10);
-        newArticleCount += count;
+        const count = await processUrls(urls, 10, (processed, skipped) => {
+          processedUrls += processed;
+          skippedUrls += skipped;
+          // console.log(
+          //   "processedUrls=",
+          //   processedUrls,
+          //   "skippedUrls=",
+          //   skippedUrls
+          // );
+
+          updateProcess(processId, {
+            total: totalUrls,
+            processed: processedUrls,
+            skipped: skippedUrls,
+          });
+        });
       }
     }
 
-    res.status(200).json({ message: "new article(s) created." });
+    await updateProcess(processId, { status: "completed" });
   } catch (error) {
     console.log("Error in fetchUrlsFromSitemap controller: ", error.message);
     next(error);
   }
 }
 
-async function processUrls(urls, batchSize) {
-  let newArticleCount = 0;
+async function processUrls(urls, batchSize, updateStatusCallback) {
+  let processed = 0;
+  let skipped = 0;
   let activeRequests = 0;
 
   const processNextUrl = async () => {
@@ -101,11 +138,12 @@ async function processUrls(urls, batchSize) {
 
     createRecordForUrl(url)
       .then((newArticle) => {
-        if (!newArticle) {
-          console.log(`Skipping ${url} (no valid metadata or content)`);
+        if (newArticle) {
+          processed++;
         } else {
-          newArticleCount++;
+          skipped++;
         }
+        updateStatusCallback(processed, skipped);
       })
       .catch((error) => console.log(`Error processing ${url}:`, error))
       .finally(() => {
@@ -117,7 +155,7 @@ async function processUrls(urls, batchSize) {
   while (activeRequests < batchSize && urls.length > 0) {
     processNextUrl();
   }
-  return newArticleCount;
+  return { processed, skipped };
 }
 
 async function getMetadataAndContentForUrl(url) {
@@ -195,6 +233,23 @@ export async function createArticle(req, res, next) {
   } catch (error) {
     console.log("Error in createArticle controller: ", error.message);
 
+    next(error);
+  }
+}
+
+export async function getProcessStatus(req, res, next) {
+  try {
+    const { id: processId } = req.params;
+
+    const process = await getProcessById(processId);
+
+    if (!process) {
+      return res.status(404).json({ error: "Process not found." });
+    }
+
+    res.status(200).json(process);
+  } catch (error) {
+    console.log("Error in getProcessStatus controller: ", error.message);
     next(error);
   }
 }
