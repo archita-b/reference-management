@@ -15,6 +15,6 @@ router.get("/articles/:id", getArticle);
 router.post("/articles", createArticle);
 
 router.get("/urls", fetchUrlsFromSitemap);
-router.get("/processess/:id", getProcessStatus);
+router.get("/processes/:id", getProcessStatus);
 
 export default router;

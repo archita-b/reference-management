@@ -57,8 +57,7 @@ export async function fetchUrlsFromSitemap(req, res, next) {
 
     const processId = uuidv4();
     await saveProcess(processId, {
-      status: "in_progress",
-      total: 0,
+      total_urls: 0,
       processed: 0,
       skipped: 0,
     });
@@ -72,12 +71,12 @@ export async function fetchUrlsFromSitemap(req, res, next) {
 
     if (!xmlResponse.ok) {
       await updateProcess(processId, { status: "failed" });
-      return res.json({ error: "Could not fetch xml data." });
+      return;
     }
 
     const xmls = await xmlResponse.json();
-    const limitedXmls = xmls.slice(3, 4);
-    // console.log("limitedXmls=", limitedXmls);
+    const limitedXmls = xmls.splice(24, 1);
+    console.log("limitedXmls=", limitedXmls);
 
     let totalUrls = 0;
     let processedUrls = 0;
@@ -94,34 +93,38 @@ export async function fetchUrlsFromSitemap(req, res, next) {
           continue;
         }
 
-        const urls = await urlResponse.json();
+        let urls = await urlResponse.json();
+        // urls = urls.slice(0, 10);
         totalUrls += urls.length;
-        // console.log("totalUrls=", totalUrls);
-        // const limitedUrls = urls.slice(0, 10);
+        console.log("totalUrls=", totalUrls);
 
         const count = await processUrls(urls, 10, (processed, skipped) => {
-          processedUrls += processed;
-          skippedUrls += skipped;
-          // console.log(
-          //   "processedUrls=",
-          //   processedUrls,
-          //   "skippedUrls=",
-          //   skippedUrls
-          // );
+          processedUrls = processed;
+          skippedUrls = skipped;
+          console.log(
+            "processedUrls=",
+            processedUrls,
+            "skippedUrls=",
+            skippedUrls
+          );
 
           updateProcess(processId, {
-            total: totalUrls,
+            status:
+              totalUrls === processedUrls + skippedUrls
+                ? "completed"
+                : "in_progress",
+            total_urls: totalUrls,
             processed: processedUrls,
             skipped: skippedUrls,
           });
         });
       }
     }
-
-    await updateProcess(processId, { status: "completed" });
   } catch (error) {
     console.log("Error in fetchUrlsFromSitemap controller: ", error.message);
-    next(error);
+    if (!res.headerSent) {
+      next(error);
+    }
   }
 }
 
@@ -179,11 +182,11 @@ async function getMetadataAndContentForUrl(url) {
 
     if (!metadataResponse || !contentResponse) {
       console.log(`Skipping ${url} (metadata or content request failed)`);
-      return null;
+      return { metadata: null, content: null };
     }
 
     return {
-      metadata: metadataResponse.metadata.content || null,
+      metadata: metadataResponse.metadata.content,
       content: contentResponse,
     };
   } catch (error) {
@@ -203,15 +206,16 @@ async function createRecordForUrl(url) {
       return null;
     }
 
-    const title = metadata.title || null;
-    const author = metadata.author || null;
+    const title = metadata?.title || null;
+    const author = metadata?.author || null;
+    const images = metadata?.images || null;
 
     return await createArticleDB(
       url,
       title,
       author,
       content,
-      metadata.images || null,
+      images,
       metadata["article:published_time"] || null
     );
   } catch (error) {

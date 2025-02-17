@@ -86,9 +86,9 @@ export async function createArticleDB(
 
 export async function saveProcess(processId, status) {
   const result = await pool.query(
-    `INSERT INTO processes (id, status, total_urls, processed, skipped)
-                   VALUES ($1, $2, $3, $4, $5)`,
-    [processId, status.status, status.total, status.processed, status.skipped]
+    `INSERT INTO processes (id, total_urls, processed, skipped)
+                   VALUES ($1, $2, $3, $4)`,
+    [processId, status.total_urls, status.processed, status.skipped]
   );
   return result.rows[0];
 }
@@ -100,7 +100,7 @@ export async function updateProcess(processId, updates) {
     WHERE id = $5`,
     [
       updates.status,
-      updates.total,
+      updates.total_urls,
       updates.processed,
       updates.skipped,
       processId,
